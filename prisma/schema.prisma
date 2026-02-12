@@ -1,0 +1,41 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id              String   @id
+  builderApiKey   String?
+  walletAddress   String
+  market          String?
+  assetId         String?
+  side            String?
+  sizeUsdc        Decimal  @default(0)
+  matchTime       DateTime?
+  transactionHash String?
+  rawJson         Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([matchTime])
+  @@index([walletAddress])
+  @@index([market])
+  @@index([assetId])
+  @@index([side])
+}
+
+model SyncState {
+  id                  Int       @id @default(1)
+  lastSyncedMatchTime DateTime?
+  lastSyncedCursor    String?
+  lastRunAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}

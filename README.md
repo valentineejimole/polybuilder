@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Polymarket Builder-Routed Trades Dashboard
 
-## Getting Started
+Next.js + Prisma dashboard for builder-attributed trades using Polymarket CLOB Builder Methods (`getBuilderTrades`).
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js App Router + TypeScript
+- Prisma + SQLite
+- `@polymarket/clob-client` with builder auth (`BuilderConfig`)
+
+## Required Environment Variables
+
+Create `.env` from `.env.example`:
+
+```env
+DATABASE_URL="file:./dev.db"
+CLOB_HOST="https://clob.polymarket.com"
+POLY_BUILDER_API_KEY=""
+POLY_BUILDER_SECRET=""
+POLY_BUILDER_PASSPHRASE=""
+POLY_BUILDER_ADDRESS=""
+TIMEZONE="UTC"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Notes:
+- `POLY_BUILDER_*` must be valid builder credentials.
+- Secrets are server-only; no browser exposure.
+- Restart the dev server after changing `.env`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```powershell
+npm install
+npx prisma migrate deploy
+npm run dev
+```
 
-## Learn More
+Open:
+- `http://localhost:3000/dashboard`
+- `http://localhost:3000/settings`
 
-To learn more about Next.js, take a look at the following resources:
+## API
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `GET /api/connection`
+  - Validates builder auth in `mode: "builder"`.
+- `POST /api/sync`
+  - Syncs builder-attributed trades via `client.getBuilderTrades(...)`.
+  - Idempotent upsert by unique trade `id`.
+  - Uses cursor pagination (`next_cursor`) and `after` time filter.
+  - If no trades are returned, it still returns success with `0 builder trades`.
+- `GET /api/trades`
+  - Filtered/paginated trade data for UI.
+- `GET /api/trades?format=csv`
+  - CSV export including `size_usdc` and total builder volume column.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Data Model
 
-## Deploy on Vercel
+`Trade` stores builder fields:
+- `id` (unique)
+- `builderApiKey`
+- `walletAddress`
+- `market`
+- `assetId`
+- `side`
+- `sizeUsdc` (used for volume)
+- `matchTime`
+- `transactionHash`
+- `rawJson`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`SyncState` stores:
+- `lastSyncedMatchTime`
+- `lastSyncedCursor`
+- `lastRunAt`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Builder Auth Troubleshooting (401)
+
+Common causes:
+
+1. Wrong builder credentials (`POLY_BUILDER_API_KEY`, `POLY_BUILDER_SECRET`, `POLY_BUILDER_PASSPHRASE`).
+2. Environment changes not loaded (restart `npm run dev`).
+3. Clock skew on local machine (check system time/NTP; API errors include `clockSkewSeconds` when available).
+4. Wrong host (`CLOB_HOST` should usually be `https://clob.polymarket.com`).
+
+Error responses include HTTP status and a server-side `correlationId` to match logs.
+
+## Windows PowerShell Smoke Test
+
+Script: `scripts/smoke-test.ps1`
+
+Runs:
+1. `npm install` (if needed)
+2. `npx prisma migrate deploy`
+3. starts dev server in background (unless `-SkipServerStart`)
+4. calls:
+   - `GET /api/connection`
+   - `POST /api/sync`
+   - `GET /api/trades?page=1&pageSize=5`
+   - `GET /api/trades?format=csv&page=1&pageSize=50` -> `trades.csv`
+5. verifies non-401 path and CSV creation
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
+```
+
+If you already started dev server manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1 -SkipServerStart
+```
