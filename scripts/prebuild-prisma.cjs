@@ -1,7 +1,20 @@
 const { execSync } = require("node:child_process");
 
 function run(cmd) {
-  execSync(cmd, { stdio: "inherit" });
+  try {
+    execSync(cmd, { stdio: "inherit" });
+  } catch (error) {
+    const status = typeof error?.status === "number" ? error.status : "unknown";
+    const signal = error?.signal || "none";
+    console.error(`[prebuild-prisma] Command failed: ${cmd} (status=${status}, signal=${signal})`);
+    if (error?.stdout) {
+      console.error(`[prebuild-prisma] stdout: ${String(error.stdout)}`);
+    }
+    if (error?.stderr) {
+      console.error(`[prebuild-prisma] stderr: ${String(error.stderr)}`);
+    }
+    throw error;
+  }
 }
 
 run("node scripts/prisma-sanity-check.cjs");

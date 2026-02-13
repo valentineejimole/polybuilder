@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 function fail(message) {
-  console.error(`[prisma-sanity] ${message}`);
+  console.error(`[prisma-sanity] ERROR: ${String(message).replace(/\s+/g, " ").trim()}`);
   process.exit(1);
 }
 
@@ -35,10 +35,10 @@ const isCI = process.env.CI === "true";
 if (isVercel || isCI) {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl || databaseUrl.trim().length === 0) {
-    fail("DATABASE_URL is missing. Set DATABASE_URL in Vercel Environment Variables.");
+    fail("DATABASE_URL missing in Vercel/CI build. Set it in Vercel Project Settings -> Environment Variables.");
   }
   if (!/^postgres(ql)?:\/\//i.test(databaseUrl)) {
-    fail("DATABASE_URL must start with postgresql:// or postgres:// on Vercel/CI.");
+    fail("DATABASE_URL must start with postgresql:// or postgres://.");
   }
 }
 
