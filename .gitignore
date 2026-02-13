@@ -46,3 +46,5 @@ trades.csv
 .env
 .env.*
 node_modules
+prisma/dev.db
+prisma/*.db

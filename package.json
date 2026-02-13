@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/prebuild-prisma.cjs && next build",
     "start": "next start",
     "lint": "eslint",
+    "prisma:sanity": "node scripts/prisma-sanity-check.cjs",
     "prisma:generate": "prisma generate",
+    "prisma:deploy": "prisma generate && prisma migrate deploy",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "smoke:test": "powershell -ExecutionPolicy Bypass -File .\\scripts\\smoke-test.ps1"
